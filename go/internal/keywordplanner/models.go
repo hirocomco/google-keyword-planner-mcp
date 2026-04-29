@@ -61,12 +61,19 @@ type ForecastResponse struct {
 // --- Google Ads API raw request/response types ---
 
 type generateKeywordIdeasRequest struct {
-	CustomerID             string                     `json:"customerId,omitempty"`
-	Language               string                     `json:"language,omitempty"`
-	GeoTargetConstants     []string                   `json:"geoTargetConstants,omitempty"`
-	KeywordSeed            *keywordSeed               `json:"keywordSeed,omitempty"`
-	URLSeed                *urlSeed                   `json:"urlSeed,omitempty"`
-	KeywordAndURLSeed      *keywordAndURLSeed         `json:"keywordAndUrlSeed,omitempty"`
+	CustomerID               string                    `json:"customerId,omitempty"`
+	Language                 string                    `json:"language,omitempty"`
+	GeoTargetConstants       []string                  `json:"geoTargetConstants,omitempty"`
+	KeywordSeed              *keywordSeed              `json:"keywordSeed,omitempty"`
+	URLSeed                  *urlSeed                  `json:"urlSeed,omitempty"`
+	KeywordAndURLSeed        *keywordAndURLSeed        `json:"keywordAndUrlSeed,omitempty"`
+	KeywordPlanNetwork       string                    `json:"keywordPlanNetwork,omitempty"`
+	IncludeAdultKeywords     bool                      `json:"includeAdultKeywords,omitempty"`
+	KeywordAnnotation        []string                  `json:"keywordAnnotation,omitempty"`
+	AggregateMetrics         *aggregateMetrics         `json:"aggregateMetrics,omitempty"`
+	HistoricalMetricsOptions *historicalMetricsOptions `json:"historicalMetricsOptions,omitempty"`
+	CurrencyCode             string                    `json:"currencyCode,omitempty"`
+	ToplevelDomain           string                    `json:"topLevelDomain,omitempty"`
 }
 
 type keywordSeed struct {
@@ -100,7 +107,13 @@ type keywordIdeaMetrics struct {
 }
 
 type generateHistoricalMetricsRequest struct {
-	Keywords []string `json:"keywords"`
+	Keywords                 []string                  `json:"keywords"`
+	Language                 string                    `json:"language,omitempty"`
+	GeoTargetConstants       []string                  `json:"geoTargetConstants,omitempty"`
+	KeywordPlanNetwork       string                    `json:"keywordPlanNetwork,omitempty"`
+	IncludeAdultKeywords     bool                      `json:"includeAdultKeywords,omitempty"`
+	AggregateMetrics         *aggregateMetrics         `json:"aggregateMetrics,omitempty"`
+	HistoricalMetricsOptions *historicalMetricsOptions `json:"historicalMetricsOptions,omitempty"`
 }
 
 type generateHistoricalMetricsResponse struct {
@@ -132,10 +145,13 @@ type generateForecastMetricsRequest struct {
 }
 
 type campaignForecastSpec struct {
-	BiddingStrategy biddingStrategy    `json:"biddingStrategy"`
-	StartDate       string             `json:"startDate"`
-	EndDate         string             `json:"endDate"`
-	AdGroups        []adGroupForecast  `json:"adGroups"`
+	BiddingStrategy    biddingStrategy   `json:"biddingStrategy"`
+	StartDate          string            `json:"startDate"`
+	EndDate            string            `json:"endDate"`
+	AdGroups           []adGroupForecast `json:"adGroups"`
+	GeoModifiers       []geoModifier     `json:"geoModifiers,omitempty"`
+	LanguageConstants  []string          `json:"languageConstants,omitempty"`
+	KeywordPlanNetwork string            `json:"keywordPlanNetwork,omitempty"`
 }
 
 type biddingStrategy struct {
@@ -151,7 +167,8 @@ type adGroupForecast struct {
 }
 
 type adGroupForecastKeyword struct {
-	Keyword forecastKeyword `json:"keyword"`
+	Keyword         forecastKeyword `json:"keyword"`
+	MaxCpcBidMicros string          `json:"maxCpcBidMicros,omitempty"`
 }
 
 type forecastKeyword struct {
@@ -177,4 +194,30 @@ type forecastMetricData struct {
 	Clicks      float64 `json:"clicks"`
 	CostMicros  float64 `json:"costMicros"`
 	CTR         float64 `json:"ctr"`
+}
+
+// historicalMetricsOptions controls historical metrics data range and breakdown.
+type historicalMetricsOptions struct {
+	YearMonthRange    *yearMonthRange `json:"yearMonthRange,omitempty"`
+	IncludeAverageCpc bool            `json:"includeAverageCpc,omitempty"`
+}
+
+type yearMonthRange struct {
+	Start yearMonth `json:"start"`
+	End   yearMonth `json:"end"`
+}
+
+type yearMonth struct {
+	Year  int32  `json:"year"`
+	Month string `json:"month"` // "JANUARY".."DECEMBER"
+}
+
+// aggregateMetrics requests aggregate breakdowns (currently only DEVICE supported by Google).
+type aggregateMetrics struct {
+	AggregateMetricTypes []string `json:"aggregateMetricTypes,omitempty"`
+}
+
+// geoModifier maps a single geo target inside campaignForecastSpec.geoModifiers.
+type geoModifier struct {
+	GeoTargetConstant string `json:"geoTargetConstant"`
 }
