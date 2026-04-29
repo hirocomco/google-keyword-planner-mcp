@@ -24,6 +24,163 @@ import (
 
 var version = "dev"
 
+var validNetworks = map[string]bool{
+	"GOOGLE_SEARCH":              true,
+	"GOOGLE_SEARCH_AND_PARTNERS": true,
+}
+
+var validMatchTypes = map[string]bool{
+	"EXACT": true, "PHRASE": true, "BROAD": true,
+}
+
+var validMonths = map[string]bool{
+	"JANUARY": true, "FEBRUARY": true, "MARCH": true, "APRIL": true,
+	"MAY": true, "JUNE": true, "JULY": true, "AUGUST": true,
+	"SEPTEMBER": true, "OCTOBER": true, "NOVEMBER": true, "DECEMBER": true,
+}
+
+func validateNetwork(n string) error {
+	if n == "" || validNetworks[n] {
+		return nil
+	}
+	return fmt.Errorf("keyword_plan_network must be GOOGLE_SEARCH or GOOGLE_SEARCH_AND_PARTNERS, got %q", n)
+}
+
+func validateMatchType(field, mt string) error {
+	if mt == "" || validMatchTypes[mt] {
+		return nil
+	}
+	return fmt.Errorf("%s must be EXACT, PHRASE, or BROAD, got %q", field, mt)
+}
+
+func validateYearMonth(field string, ym *yearMonthInput) error {
+	if ym == nil {
+		return nil
+	}
+	if ym.Year < 1900 || ym.Year > 9999 {
+		return fmt.Errorf("%s.year out of range: %d", field, ym.Year)
+	}
+	if !validMonths[ym.Month] {
+		return fmt.Errorf("%s.month must be one of JANUARY..DECEMBER, got %q", field, ym.Month)
+	}
+	return nil
+}
+
+func buildHistoricalRange(startIn, endIn *yearMonthInput) (*keywordplanner.YearMonthRange, error) {
+	if startIn == nil && endIn == nil {
+		return nil, nil
+	}
+	if (startIn == nil) != (endIn == nil) {
+		return nil, fmt.Errorf("historical_metrics_start and historical_metrics_end must both be set or both omitted")
+	}
+	if err := validateYearMonth("historical_metrics_start", startIn); err != nil {
+		return nil, err
+	}
+	if err := validateYearMonth("historical_metrics_end", endIn); err != nil {
+		return nil, err
+	}
+	return &keywordplanner.YearMonthRange{
+		Start: keywordplanner.YearMonth{Year: startIn.Year, Month: startIn.Month},
+		End:   keywordplanner.YearMonth{Year: endIn.Year, Month: endIn.Month},
+	}, nil
+}
+
+func buildKeywordIdeasOptions(input generateKeywordIdeasInput) (keywordplanner.KeywordIdeasOptions, error) {
+	if err := validateNetwork(input.KeywordPlanNetwork); err != nil {
+		return keywordplanner.KeywordIdeasOptions{}, err
+	}
+	hr, err := buildHistoricalRange(input.HistoricalDateStart, input.HistoricalDateEnd)
+	if err != nil {
+		return keywordplanner.KeywordIdeasOptions{}, err
+	}
+	return keywordplanner.KeywordIdeasOptions{
+		Language:                    input.Language,
+		GeoTargetConstants:          input.GeoTargetConstants,
+		KeywordPlanNetwork:          input.KeywordPlanNetwork,
+		IncludeAdultKeywords:        input.IncludeAdultKeywords,
+		KeywordAnnotation:           input.KeywordAnnotation,
+		AggregateMetrics:            input.AggregateMetrics,
+		HistoricalDateRange:         hr,
+		HistoricalIncludeAverageCpc: input.IncludeAverageCpc,
+		CurrencyCode:                input.CurrencyCode,
+		ToplevelDomain:              input.ToplevelDomain,
+	}, nil
+}
+
+func buildHistoricalMetricsOptions(input getHistoricalMetricsInput) (keywordplanner.HistoricalMetricsOptions, error) {
+	if err := validateNetwork(input.KeywordPlanNetwork); err != nil {
+		return keywordplanner.HistoricalMetricsOptions{}, err
+	}
+	hr, err := buildHistoricalRange(input.HistoricalDateStart, input.HistoricalDateEnd)
+	if err != nil {
+		return keywordplanner.HistoricalMetricsOptions{}, err
+	}
+	return keywordplanner.HistoricalMetricsOptions{
+		Language:                    input.Language,
+		GeoTargetConstants:          input.GeoTargetConstants,
+		KeywordPlanNetwork:          input.KeywordPlanNetwork,
+		IncludeAdultKeywords:        input.IncludeAdultKeywords,
+		AggregateMetrics:            input.AggregateMetrics,
+		HistoricalDateRange:         hr,
+		HistoricalIncludeAverageCpc: input.IncludeAverageCpc,
+	}, nil
+}
+
+func buildForecastOptions(input getKeywordForecastInput) (keywordplanner.ForecastOptions, error) {
+	if err := validateNetwork(input.KeywordPlanNetwork); err != nil {
+		return keywordplanner.ForecastOptions{}, err
+	}
+	if err := validateMatchType("match_type", input.MatchType); err != nil {
+		return keywordplanner.ForecastOptions{}, err
+	}
+	if (input.StartDate == "") != (input.EndDate == "") {
+		return keywordplanner.ForecastOptions{}, fmt.Errorf("start_date and end_date must both be set or both omitted")
+	}
+	if input.StartDate != "" && input.StartDate > input.EndDate {
+		return keywordplanner.ForecastOptions{}, fmt.Errorf("start_date %q is after end_date %q", input.StartDate, input.EndDate)
+	}
+	if len(input.Keywords) > 0 && len(input.KeywordSpecs) > 0 {
+		return keywordplanner.ForecastOptions{}, fmt.Errorf("provide either keywords or keyword_specs, not both")
+	}
+	if len(input.Keywords) == 0 && len(input.KeywordSpecs) == 0 {
+		return keywordplanner.ForecastOptions{}, fmt.Errorf("either keywords or keyword_specs is required")
+	}
+	specs := make([]keywordplanner.ForecastKeywordSpec, 0, len(input.KeywordSpecs))
+	for i, s := range input.KeywordSpecs {
+		if s.Text == "" {
+			return keywordplanner.ForecastOptions{}, fmt.Errorf("keyword_specs[%d].text is required", i)
+		}
+		if err := validateMatchType(fmt.Sprintf("keyword_specs[%d].match_type", i), s.MatchType); err != nil {
+			return keywordplanner.ForecastOptions{}, err
+		}
+		specs = append(specs, keywordplanner.ForecastKeywordSpec{
+			Text: s.Text, MatchType: s.MatchType, MaxCpcBidMicros: s.MaxCpcBidMicros,
+		})
+	}
+	return keywordplanner.ForecastOptions{
+		GeoTargetConstants: input.GeoTargetConstants,
+		LanguageConstants:  input.LanguageConstants,
+		KeywordPlanNetwork: input.KeywordPlanNetwork,
+		MatchType:          input.MatchType,
+		StartDate:          input.StartDate,
+		EndDate:            input.EndDate,
+		KeywordSpecs:       specs,
+	}, nil
+}
+
+func jsonResult(v any) (*mcp.CallToolResult, any, error) {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return nil, nil, fmt.Errorf("marshalling result: %w", err)
+	}
+	return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: string(b)}}}, nil, nil
+}
+
+func errorResult(err error) *mcp.CallToolResult {
+	b, _ := json.Marshal(map[string]string{"error": err.Error()})
+	return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: string(b)}}}
+}
+
 func main() {
 	developerToken := flag.String("developer-token", "", "Google Ads developer token")
 	clientID := flag.String("client-id", "", "OAuth2 client ID")
@@ -99,65 +256,95 @@ func main() {
 	}
 }
 
+// yearMonthInput is the JSON-input shape for a year/month boundary.
+type yearMonthInput struct {
+	Year  int32  `json:"year"  jsonschema:"Four-digit year (e.g. 2024)."`
+	Month string `json:"month" jsonschema:"Month enum: JANUARY, FEBRUARY, MARCH, APRIL, MAY, JUNE, JULY, AUGUST, SEPTEMBER, OCTOBER, NOVEMBER, DECEMBER."`
+}
+
 // generateKeywordIdeasInput is the input schema for the generate_keyword_ideas tool.
 type generateKeywordIdeasInput struct {
-	SeedKeywords []string `json:"seed_keywords"`
-	URL          string   `json:"url"`
-	Language     string   `json:"language"`
+	SeedKeywords        []string        `json:"seed_keywords" jsonschema:"Seed keywords to generate ideas from (e.g. ['lawn care','fertilizer']). At least one of seed_keywords or url must be provided."`
+	URL                 string          `json:"url"           jsonschema:"A URL to generate ideas from (e.g. 'https://example.com'). At least one of seed_keywords or url must be provided."`
+	Language            string          `json:"language"      jsonschema:"Language resource name (e.g. 'languageConstants/1000' for English). Omit to use all languages."`
+	GeoTargetConstants  []string        `json:"geo_target_constants" jsonschema:"Location resource names (e.g. ['geoTargetConstants/2840'] = US, ['geoTargetConstants/21137'] = California). Omit for Google's default."`
+	KeywordPlanNetwork  string          `json:"keyword_plan_network" jsonschema:"GOOGLE_SEARCH or GOOGLE_SEARCH_AND_PARTNERS. Omit for Google's default."`
+	IncludeAdultKeywords bool           `json:"include_adult_keywords" jsonschema:"Include adult-content keywords. Default false."`
+	KeywordAnnotation   []string        `json:"keyword_annotation" jsonschema:"Annotation types (e.g. ['KEYWORD_CONCEPT'])."`
+	AggregateMetrics    []string        `json:"aggregate_metrics" jsonschema:"Aggregate metric types. Currently only 'DEVICE' is supported by Google."`
+	HistoricalDateStart *yearMonthInput `json:"historical_metrics_start" jsonschema:"Start of historical metrics window. If set, historical_metrics_end must also be set."`
+	HistoricalDateEnd   *yearMonthInput `json:"historical_metrics_end" jsonschema:"End of historical metrics window. If set, historical_metrics_start must also be set."`
+	IncludeAverageCpc   bool            `json:"include_average_cpc" jsonschema:"Include average CPC in historical metrics output. Default false."`
+	CurrencyCode        string          `json:"currency_code" jsonschema:"ISO 4217 currency code (e.g. 'USD')."`
+	ToplevelDomain      string          `json:"toplevel_domain" jsonschema:"Country TLD (e.g. 'com', 'co.uk')."`
 }
 
 // getHistoricalMetricsInput is the input schema for the get_historical_metrics tool.
 type getHistoricalMetricsInput struct {
-	Keywords []string `json:"keywords"`
+	Keywords            []string        `json:"keywords" jsonschema:"List of keywords to get historical search metrics for."`
+	Language            string          `json:"language" jsonschema:"Language resource name (e.g. 'languageConstants/1000')."`
+	GeoTargetConstants  []string        `json:"geo_target_constants" jsonschema:"Location resource names (e.g. ['geoTargetConstants/21137'] for California)."`
+	KeywordPlanNetwork  string          `json:"keyword_plan_network" jsonschema:"GOOGLE_SEARCH or GOOGLE_SEARCH_AND_PARTNERS."`
+	IncludeAdultKeywords bool           `json:"include_adult_keywords"`
+	AggregateMetrics    []string        `json:"aggregate_metrics" jsonschema:"Currently only 'DEVICE' is supported."`
+	HistoricalDateStart *yearMonthInput `json:"historical_metrics_start"`
+	HistoricalDateEnd   *yearMonthInput `json:"historical_metrics_end"`
+	IncludeAverageCpc   bool            `json:"include_average_cpc"`
+}
+
+// forecastKeywordSpecIn is the JSON-input shape for a per-keyword forecast entry.
+type forecastKeywordSpecIn struct {
+	Text            string `json:"text"`
+	MatchType       string `json:"match_type"`
+	MaxCpcBidMicros int64  `json:"max_cpc_micros"`
 }
 
 // getKeywordForecastInput is the input schema for the get_keyword_forecast tool.
 type getKeywordForecastInput struct {
-	Keywords     []string `json:"keywords"`
-	MaxCPCMicros int64    `json:"max_cpc_micros"`
-	ForecastDays int      `json:"forecast_days"`
+	Keywords           []string                `json:"keywords" jsonschema:"List of keywords to forecast. Mutually exclusive with keyword_specs."`
+	KeywordSpecs       []forecastKeywordSpecIn `json:"keyword_specs" jsonschema:"Per-keyword spec list. Mutually exclusive with keywords. Use when you need per-keyword match types or bid overrides."`
+	MaxCPCMicros       int64                   `json:"max_cpc_micros" jsonschema:"Maximum CPC bid in micros (1,000,000 = $1.00)."`
+	ForecastDays       int                     `json:"forecast_days" jsonschema:"Days to forecast. Default 30. Ignored when start_date/end_date are set."`
+	GeoTargetConstants []string                `json:"geo_target_constants" jsonschema:"Location resource names (e.g. ['geoTargetConstants/21137'] for California)."`
+	LanguageConstants  []string                `json:"language_constants" jsonschema:"Language resource names (e.g. ['languageConstants/1000'])."`
+	KeywordPlanNetwork string                  `json:"keyword_plan_network" jsonschema:"GOOGLE_SEARCH or GOOGLE_SEARCH_AND_PARTNERS."`
+	MatchType          string                  `json:"match_type" jsonschema:"Default match type (EXACT, PHRASE, BROAD). Applied to all keywords or as fallback for keyword_specs entries that omit match_type. Default BROAD."`
+	StartDate          string                  `json:"start_date" jsonschema:"YYYY-MM-DD start of forecast window. Both start_date and end_date must be set together."`
+	EndDate            string                  `json:"end_date" jsonschema:"YYYY-MM-DD end of forecast window."`
 }
 
 func generateKeywordIdeas(ctx context.Context, client *keywordplanner.Client, input generateKeywordIdeasInput) (*mcp.CallToolResult, any, error) {
-	result, err := client.GenerateKeywordIdeas(ctx, input.SeedKeywords, input.URL, keywordplanner.KeywordIdeasOptions{
-		Language: input.Language,
-	})
+	opts, err := buildKeywordIdeasOptions(input)
 	if err != nil {
-		errResult := map[string]string{"error": fmt.Sprintf("generating keyword ideas: %v", err)}
-		b, _ := json.Marshal(errResult)
-		return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: string(b)}}}, nil, nil
+		return errorResult(err), nil, nil
 	}
-	b, err := json.Marshal(result)
+	result, err := client.GenerateKeywordIdeas(ctx, input.SeedKeywords, input.URL, opts)
 	if err != nil {
-		return nil, nil, fmt.Errorf("marshalling result: %w", err)
+		return errorResult(fmt.Errorf("generating keyword ideas: %w", err)), nil, nil
 	}
-	return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: string(b)}}}, nil, nil
+	return jsonResult(result)
 }
 
 func getHistoricalMetrics(ctx context.Context, client *keywordplanner.Client, input getHistoricalMetricsInput) (*mcp.CallToolResult, any, error) {
-	result, err := client.GetHistoricalMetrics(ctx, input.Keywords, keywordplanner.HistoricalMetricsOptions{})
+	opts, err := buildHistoricalMetricsOptions(input)
 	if err != nil {
-		errResult := map[string]string{"error": fmt.Sprintf("getting historical metrics: %v", err)}
-		b, _ := json.Marshal(errResult)
-		return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: string(b)}}}, nil, nil
+		return errorResult(err), nil, nil
 	}
-	b, err := json.Marshal(result)
+	result, err := client.GetHistoricalMetrics(ctx, input.Keywords, opts)
 	if err != nil {
-		return nil, nil, fmt.Errorf("marshalling result: %w", err)
+		return errorResult(fmt.Errorf("getting historical metrics: %w", err)), nil, nil
 	}
-	return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: string(b)}}}, nil, nil
+	return jsonResult(result)
 }
 
 func getKeywordForecast(ctx context.Context, client *keywordplanner.Client, input getKeywordForecastInput) (*mcp.CallToolResult, any, error) {
-	result, err := client.GetKeywordForecast(ctx, input.Keywords, input.MaxCPCMicros, input.ForecastDays, keywordplanner.ForecastOptions{})
+	opts, err := buildForecastOptions(input)
 	if err != nil {
-		errResult := map[string]string{"error": fmt.Sprintf("getting keyword forecast: %v", err)}
-		b, _ := json.Marshal(errResult)
-		return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: string(b)}}}, nil, nil
+		return errorResult(err), nil, nil
 	}
-	b, err := json.Marshal(result)
+	result, err := client.GetKeywordForecast(ctx, input.Keywords, input.MaxCPCMicros, input.ForecastDays, opts)
 	if err != nil {
-		return nil, nil, fmt.Errorf("marshalling result: %w", err)
+		return errorResult(fmt.Errorf("getting keyword forecast: %w", err)), nil, nil
 	}
-	return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: string(b)}}}, nil, nil
+	return jsonResult(result)
 }
