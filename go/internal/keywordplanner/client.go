@@ -79,13 +79,15 @@ func NewTestClient(developerToken, customerID, loginCustomerID, baseURL string, 
 }
 
 // GenerateKeywordIdeas returns keyword ideas for the given seed keywords and/or URL.
+// opts carries optional fields (geo, language, network, etc.). Pass a zero-value
+// KeywordIdeasOptions{} to keep current behavior.
 func (c *Client) GenerateKeywordIdeas(
 	ctx context.Context,
 	seedKeywords []string,
 	seedURL string,
-	language string,
+	opts KeywordIdeasOptions,
 ) (*KeywordIdeasResponse, error) {
-	reqBody := c.buildKeywordIdeasRequest(seedKeywords, seedURL, language)
+	reqBody := c.buildKeywordIdeasRequest(seedKeywords, seedURL, opts)
 	endpoint := fmt.Sprintf("%s/customers/%s:generateKeywordIdeas", c.baseURL, c.customerID)
 
 	var raw generateKeywordIdeasResponse
@@ -248,8 +250,29 @@ func (c *Client) post(ctx context.Context, endpoint string, body, out any) error
 	return nil
 }
 
-func (c *Client) buildKeywordIdeasRequest(seedKeywords []string, seedURL, language string) generateKeywordIdeasRequest {
-	req := generateKeywordIdeasRequest{Language: language}
+func (c *Client) buildKeywordIdeasRequest(seedKeywords []string, seedURL string, opts KeywordIdeasOptions) generateKeywordIdeasRequest {
+	req := generateKeywordIdeasRequest{
+		Language:             opts.Language,
+		GeoTargetConstants:   opts.GeoTargetConstants,
+		KeywordPlanNetwork:   opts.KeywordPlanNetwork,
+		IncludeAdultKeywords: opts.IncludeAdultKeywords,
+		KeywordAnnotation:    opts.KeywordAnnotation,
+		CurrencyCode:         opts.CurrencyCode,
+		ToplevelDomain:       opts.ToplevelDomain,
+	}
+	if len(opts.AggregateMetrics) > 0 {
+		req.AggregateMetrics = &aggregateMetrics{AggregateMetricTypes: opts.AggregateMetrics}
+	}
+	if opts.HistoricalDateRange != nil || opts.HistoricalIncludeAverageCpc {
+		hmo := &historicalMetricsOptions{IncludeAverageCpc: opts.HistoricalIncludeAverageCpc}
+		if opts.HistoricalDateRange != nil {
+			hmo.YearMonthRange = &yearMonthRange{
+				Start: yearMonth{Year: opts.HistoricalDateRange.Start.Year, Month: opts.HistoricalDateRange.Start.Month},
+				End:   yearMonth{Year: opts.HistoricalDateRange.End.Year, Month: opts.HistoricalDateRange.End.Month},
+			}
+		}
+		req.HistoricalMetricsOptions = hmo
+	}
 	switch {
 	case len(seedKeywords) > 0 && seedURL != "":
 		req.KeywordAndURLSeed = &keywordAndURLSeed{URL: seedURL, Keywords: seedKeywords}
@@ -282,4 +305,30 @@ func parseMonthEnum(month string) int32 {
 	return 0
 }
 
+// KeywordIdeasOptions are optional parameters for GenerateKeywordIdeas.
+// All fields are optional; zero values are omitted from the request.
+type KeywordIdeasOptions struct {
+	Language                    string
+	GeoTargetConstants          []string
+	KeywordPlanNetwork          string // GOOGLE_SEARCH or GOOGLE_SEARCH_AND_PARTNERS
+	IncludeAdultKeywords        bool
+	KeywordAnnotation           []string
+	AggregateMetrics            []string // currently only ["DEVICE"]
+	HistoricalDateRange         *YearMonthRange
+	HistoricalIncludeAverageCpc bool
+	CurrencyCode                string
+	ToplevelDomain              string
+}
+
+// YearMonthRange is exported so callers can build historical-metrics date ranges.
+type YearMonthRange struct {
+	Start YearMonth
+	End   YearMonth
+}
+
+// YearMonth uses Google's enum month names ("JANUARY".."DECEMBER").
+type YearMonth struct {
+	Year  int32
+	Month string
+}
 

@@ -69,7 +69,7 @@ func TestGenerateKeywordIdeas_SendsLoginCustomerIDHeader(t *testing.T) {
 	client := keywordplanner.NewTestClient(
 		"dev-token", "3778350596", "1381404200", srv.URL, srv.Client(),
 	)
-	_, _ = client.GenerateKeywordIdeas(context.Background(), []string{"go"}, "", "")
+	_, _ = client.GenerateKeywordIdeas(context.Background(), []string{"go"}, "", keywordplanner.KeywordIdeasOptions{})
 
 	if capturedLoginID != "1381404200" {
 		t.Errorf("login-customer-id header = %q, want %q", capturedLoginID, "1381404200")
@@ -92,7 +92,7 @@ func TestGenerateKeywordIdeas_OmitsLoginCustomerIDHeaderWhenEmpty(t *testing.T) 
 	client := keywordplanner.NewTestClient(
 		"dev-token", "3778350596", "", srv.URL, srv.Client(),
 	)
-	_, _ = client.GenerateKeywordIdeas(context.Background(), []string{"go"}, "", "")
+	_, _ = client.GenerateKeywordIdeas(context.Background(), []string{"go"}, "", keywordplanner.KeywordIdeasOptions{})
 
 	if capturedLoginID != "" {
 		t.Errorf("login-customer-id header should be absent, got %q", capturedLoginID)
@@ -115,7 +115,7 @@ func TestPost_ReturnsFullErrorBody(t *testing.T) {
 	defer srv.Close()
 
 	client := keywordplanner.NewTestClient("dev-token", "123", "", srv.URL, srv.Client())
-	_, err := client.GenerateKeywordIdeas(context.Background(), []string{"test"}, "", "")
+	_, err := client.GenerateKeywordIdeas(context.Background(), []string{"test"}, "", keywordplanner.KeywordIdeasOptions{})
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}

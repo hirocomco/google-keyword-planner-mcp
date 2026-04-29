@@ -119,7 +119,9 @@ type getKeywordForecastInput struct {
 }
 
 func generateKeywordIdeas(ctx context.Context, client *keywordplanner.Client, input generateKeywordIdeasInput) (*mcp.CallToolResult, any, error) {
-	result, err := client.GenerateKeywordIdeas(ctx, input.SeedKeywords, input.URL, input.Language)
+	result, err := client.GenerateKeywordIdeas(ctx, input.SeedKeywords, input.URL, keywordplanner.KeywordIdeasOptions{
+		Language: input.Language,
+	})
 	if err != nil {
 		errResult := map[string]string{"error": fmt.Sprintf("generating keyword ideas: %v", err)}
 		b, _ := json.Marshal(errResult)
