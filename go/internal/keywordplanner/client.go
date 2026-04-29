@@ -187,9 +187,9 @@ func (c *Client) GetKeywordForecast(
 	startDate := opts.StartDate
 	endDate := opts.EndDate
 	if startDate == "" && endDate == "" {
-		now := time.Now().UTC()
-		startDate = now.Format("2006-01-02")
-		endDate = now.AddDate(0, 0, forecastDays).Format("2006-01-02")
+		tomorrow := time.Now().UTC().AddDate(0, 0, 1)
+		startDate = tomorrow.Format("2006-01-02")
+		endDate = tomorrow.AddDate(0, 0, forecastDays).Format("2006-01-02")
 	}
 
 	defaultMatchType := opts.MatchType
