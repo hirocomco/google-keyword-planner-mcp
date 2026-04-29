@@ -258,59 +258,59 @@ func main() {
 
 // yearMonthInput is the JSON-input shape for a year/month boundary.
 type yearMonthInput struct {
-	Year  int32  `json:"year"  jsonschema:"Four-digit year (e.g. 2024)."`
-	Month string `json:"month" jsonschema:"Month enum: JANUARY, FEBRUARY, MARCH, APRIL, MAY, JUNE, JULY, AUGUST, SEPTEMBER, OCTOBER, NOVEMBER, DECEMBER."`
+	Year  int32  `json:"year,omitempty"  jsonschema:"Four-digit year (e.g. 2024)."`
+	Month string `json:"month,omitempty" jsonschema:"Month enum: JANUARY, FEBRUARY, MARCH, APRIL, MAY, JUNE, JULY, AUGUST, SEPTEMBER, OCTOBER, NOVEMBER, DECEMBER."`
 }
 
 // generateKeywordIdeasInput is the input schema for the generate_keyword_ideas tool.
 type generateKeywordIdeasInput struct {
-	SeedKeywords        []string        `json:"seed_keywords" jsonschema:"Seed keywords to generate ideas from (e.g. ['lawn care','fertilizer']). At least one of seed_keywords or url must be provided."`
-	URL                 string          `json:"url"           jsonschema:"A URL to generate ideas from (e.g. 'https://example.com'). At least one of seed_keywords or url must be provided."`
-	Language            string          `json:"language"      jsonschema:"Language resource name (e.g. 'languageConstants/1000' for English). Omit to use all languages."`
-	GeoTargetConstants  []string        `json:"geo_target_constants" jsonschema:"Location resource names (e.g. ['geoTargetConstants/2840'] = US, ['geoTargetConstants/21137'] = California). Omit for Google's default."`
-	KeywordPlanNetwork  string          `json:"keyword_plan_network" jsonschema:"GOOGLE_SEARCH or GOOGLE_SEARCH_AND_PARTNERS. Omit for Google's default."`
-	IncludeAdultKeywords bool           `json:"include_adult_keywords" jsonschema:"Include adult-content keywords. Default false."`
-	KeywordAnnotation   []string        `json:"keyword_annotation" jsonschema:"Annotation types (e.g. ['KEYWORD_CONCEPT'])."`
-	AggregateMetrics    []string        `json:"aggregate_metrics" jsonschema:"Aggregate metric types. Currently only 'DEVICE' is supported by Google."`
-	HistoricalDateStart *yearMonthInput `json:"historical_metrics_start" jsonschema:"Start of historical metrics window. If set, historical_metrics_end must also be set."`
-	HistoricalDateEnd   *yearMonthInput `json:"historical_metrics_end" jsonschema:"End of historical metrics window. If set, historical_metrics_start must also be set."`
-	IncludeAverageCpc   bool            `json:"include_average_cpc" jsonschema:"Include average CPC in historical metrics output. Default false."`
-	CurrencyCode        string          `json:"currency_code" jsonschema:"ISO 4217 currency code (e.g. 'USD')."`
-	ToplevelDomain      string          `json:"toplevel_domain" jsonschema:"Country TLD (e.g. 'com', 'co.uk')."`
+	SeedKeywords        []string        `json:"seed_keywords,omitempty" jsonschema:"Seed keywords to generate ideas from (e.g. ['lawn care','fertilizer']). At least one of seed_keywords or url must be provided."`
+	URL                 string          `json:"url,omitempty"           jsonschema:"A URL to generate ideas from (e.g. 'https://example.com'). At least one of seed_keywords or url must be provided."`
+	Language            string          `json:"language,omitempty"      jsonschema:"Language resource name (e.g. 'languageConstants/1000' for English). Omit to use all languages."`
+	GeoTargetConstants  []string        `json:"geo_target_constants,omitempty" jsonschema:"Location resource names (e.g. ['geoTargetConstants/2840'] = US, ['geoTargetConstants/21137'] = California). Omit for Google's default."`
+	KeywordPlanNetwork  string          `json:"keyword_plan_network,omitempty" jsonschema:"GOOGLE_SEARCH or GOOGLE_SEARCH_AND_PARTNERS. Omit for Google's default."`
+	IncludeAdultKeywords bool           `json:"include_adult_keywords,omitempty" jsonschema:"Include adult-content keywords. Default false."`
+	KeywordAnnotation   []string        `json:"keyword_annotation,omitempty" jsonschema:"Annotation types (e.g. ['KEYWORD_CONCEPT'])."`
+	AggregateMetrics    []string        `json:"aggregate_metrics,omitempty" jsonschema:"Aggregate metric types. Currently only 'DEVICE' is supported by Google."`
+	HistoricalDateStart *yearMonthInput `json:"historical_metrics_start,omitempty" jsonschema:"Start of historical metrics window. If set, historical_metrics_end must also be set."`
+	HistoricalDateEnd   *yearMonthInput `json:"historical_metrics_end,omitempty" jsonschema:"End of historical metrics window. If set, historical_metrics_start must also be set."`
+	IncludeAverageCpc   bool            `json:"include_average_cpc,omitempty" jsonschema:"Include average CPC in historical metrics output. Default false."`
+	CurrencyCode        string          `json:"currency_code,omitempty" jsonschema:"ISO 4217 currency code (e.g. 'USD')."`
+	ToplevelDomain      string          `json:"toplevel_domain,omitempty" jsonschema:"Country TLD (e.g. 'com', 'co.uk')."`
 }
 
 // getHistoricalMetricsInput is the input schema for the get_historical_metrics tool.
 type getHistoricalMetricsInput struct {
-	Keywords            []string        `json:"keywords" jsonschema:"List of keywords to get historical search metrics for."`
-	Language            string          `json:"language" jsonschema:"Language resource name (e.g. 'languageConstants/1000')."`
-	GeoTargetConstants  []string        `json:"geo_target_constants" jsonschema:"Location resource names (e.g. ['geoTargetConstants/21137'] for California)."`
-	KeywordPlanNetwork  string          `json:"keyword_plan_network" jsonschema:"GOOGLE_SEARCH or GOOGLE_SEARCH_AND_PARTNERS."`
-	IncludeAdultKeywords bool           `json:"include_adult_keywords"`
-	AggregateMetrics    []string        `json:"aggregate_metrics" jsonschema:"Currently only 'DEVICE' is supported."`
-	HistoricalDateStart *yearMonthInput `json:"historical_metrics_start"`
-	HistoricalDateEnd   *yearMonthInput `json:"historical_metrics_end"`
-	IncludeAverageCpc   bool            `json:"include_average_cpc"`
+	Keywords            []string        `json:"keywords,omitempty" jsonschema:"List of keywords to get historical search metrics for."`
+	Language            string          `json:"language,omitempty" jsonschema:"Language resource name (e.g. 'languageConstants/1000')."`
+	GeoTargetConstants  []string        `json:"geo_target_constants,omitempty" jsonschema:"Location resource names (e.g. ['geoTargetConstants/21137'] for California)."`
+	KeywordPlanNetwork  string          `json:"keyword_plan_network,omitempty" jsonschema:"GOOGLE_SEARCH or GOOGLE_SEARCH_AND_PARTNERS."`
+	IncludeAdultKeywords bool           `json:"include_adult_keywords,omitempty"`
+	AggregateMetrics    []string        `json:"aggregate_metrics,omitempty" jsonschema:"Currently only 'DEVICE' is supported."`
+	HistoricalDateStart *yearMonthInput `json:"historical_metrics_start,omitempty"`
+	HistoricalDateEnd   *yearMonthInput `json:"historical_metrics_end,omitempty"`
+	IncludeAverageCpc   bool            `json:"include_average_cpc,omitempty"`
 }
 
 // forecastKeywordSpecIn is the JSON-input shape for a per-keyword forecast entry.
 type forecastKeywordSpecIn struct {
-	Text            string `json:"text"`
-	MatchType       string `json:"match_type"`
-	MaxCpcBidMicros int64  `json:"max_cpc_micros"`
+	Text            string `json:"text,omitempty"`
+	MatchType       string `json:"match_type,omitempty"`
+	MaxCpcBidMicros int64  `json:"max_cpc_micros,omitempty"`
 }
 
 // getKeywordForecastInput is the input schema for the get_keyword_forecast tool.
 type getKeywordForecastInput struct {
-	Keywords           []string                `json:"keywords" jsonschema:"List of keywords to forecast. Mutually exclusive with keyword_specs."`
-	KeywordSpecs       []forecastKeywordSpecIn `json:"keyword_specs" jsonschema:"Per-keyword spec list. Mutually exclusive with keywords. Use when you need per-keyword match types or bid overrides."`
-	MaxCPCMicros       int64                   `json:"max_cpc_micros" jsonschema:"Maximum CPC bid in micros (1,000,000 = $1.00)."`
-	ForecastDays       int                     `json:"forecast_days" jsonschema:"Days to forecast. Default 30. Ignored when start_date/end_date are set."`
-	GeoTargetConstants []string                `json:"geo_target_constants" jsonschema:"Location resource names (e.g. ['geoTargetConstants/21137'] for California)."`
-	LanguageConstants  []string                `json:"language_constants" jsonschema:"Language resource names (e.g. ['languageConstants/1000'])."`
-	KeywordPlanNetwork string                  `json:"keyword_plan_network" jsonschema:"GOOGLE_SEARCH or GOOGLE_SEARCH_AND_PARTNERS."`
-	MatchType          string                  `json:"match_type" jsonschema:"Default match type (EXACT, PHRASE, BROAD). Applied to all keywords or as fallback for keyword_specs entries that omit match_type. Default BROAD."`
-	StartDate          string                  `json:"start_date" jsonschema:"YYYY-MM-DD start of forecast window. Both start_date and end_date must be set together."`
-	EndDate            string                  `json:"end_date" jsonschema:"YYYY-MM-DD end of forecast window."`
+	Keywords           []string                `json:"keywords,omitempty" jsonschema:"List of keywords to forecast. Mutually exclusive with keyword_specs."`
+	KeywordSpecs       []forecastKeywordSpecIn `json:"keyword_specs,omitempty" jsonschema:"Per-keyword spec list. Mutually exclusive with keywords. Use when you need per-keyword match types or bid overrides."`
+	MaxCPCMicros       int64                   `json:"max_cpc_micros,omitempty" jsonschema:"Maximum CPC bid in micros (1,000,000 = $1.00)."`
+	ForecastDays       int                     `json:"forecast_days,omitempty" jsonschema:"Days to forecast. Default 30. Ignored when start_date/end_date are set."`
+	GeoTargetConstants []string                `json:"geo_target_constants,omitempty" jsonschema:"Location resource names (e.g. ['geoTargetConstants/21137'] for California)."`
+	LanguageConstants  []string                `json:"language_constants,omitempty" jsonschema:"Language resource names (e.g. ['languageConstants/1000'])."`
+	KeywordPlanNetwork string                  `json:"keyword_plan_network,omitempty" jsonschema:"GOOGLE_SEARCH or GOOGLE_SEARCH_AND_PARTNERS."`
+	MatchType          string                  `json:"match_type,omitempty" jsonschema:"Default match type (EXACT, PHRASE, BROAD). Applied to all keywords or as fallback for keyword_specs entries that omit match_type. Default BROAD."`
+	StartDate          string                  `json:"start_date,omitempty" jsonschema:"YYYY-MM-DD start of forecast window. Both start_date and end_date must be set together."`
+	EndDate            string                  `json:"end_date,omitempty" jsonschema:"YYYY-MM-DD end of forecast window."`
 }
 
 func generateKeywordIdeas(ctx context.Context, client *keywordplanner.Client, input generateKeywordIdeasInput) (*mcp.CallToolResult, any, error) {
