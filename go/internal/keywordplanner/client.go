@@ -197,6 +197,11 @@ func (c *Client) GetKeywordForecast(
 		defaultMatchType = "BROAD"
 	}
 
+	keywordPlanNetwork := opts.KeywordPlanNetwork
+	if keywordPlanNetwork == "" {
+		keywordPlanNetwork = "GOOGLE_SEARCH"
+	}
+
 	specs := opts.KeywordSpecs
 	if len(specs) == 0 {
 		specs = make([]ForecastKeywordSpec, 0, len(keywords))
@@ -239,7 +244,7 @@ func (c *Client) GetKeywordForecast(
 			AdGroups:           []adGroupForecast{{Biddable: biddable}},
 			GeoModifiers:       geoMods,
 			LanguageConstants:  opts.LanguageConstants,
-			KeywordPlanNetwork: opts.KeywordPlanNetwork,
+			KeywordPlanNetwork: keywordPlanNetwork,
 		},
 	}
 
