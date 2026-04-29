@@ -135,7 +135,7 @@ func generateKeywordIdeas(ctx context.Context, client *keywordplanner.Client, in
 }
 
 func getHistoricalMetrics(ctx context.Context, client *keywordplanner.Client, input getHistoricalMetricsInput) (*mcp.CallToolResult, any, error) {
-	result, err := client.GetHistoricalMetrics(ctx, input.Keywords)
+	result, err := client.GetHistoricalMetrics(ctx, input.Keywords, keywordplanner.HistoricalMetricsOptions{})
 	if err != nil {
 		errResult := map[string]string{"error": fmt.Sprintf("getting historical metrics: %v", err)}
 		b, _ := json.Marshal(errResult)

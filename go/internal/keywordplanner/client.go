@@ -118,8 +118,29 @@ func (c *Client) GenerateKeywordIdeas(
 func (c *Client) GetHistoricalMetrics(
 	ctx context.Context,
 	keywords []string,
+	opts HistoricalMetricsOptions,
 ) (*HistoricalMetricsResponse, error) {
-	reqBody := generateHistoricalMetricsRequest{Keywords: keywords}
+	reqBody := generateHistoricalMetricsRequest{
+		Keywords:             keywords,
+		Language:             opts.Language,
+		GeoTargetConstants:   opts.GeoTargetConstants,
+		KeywordPlanNetwork:   opts.KeywordPlanNetwork,
+		IncludeAdultKeywords: opts.IncludeAdultKeywords,
+	}
+	if len(opts.AggregateMetrics) > 0 {
+		reqBody.AggregateMetrics = &aggregateMetrics{AggregateMetricTypes: opts.AggregateMetrics}
+	}
+	if opts.HistoricalDateRange != nil || opts.HistoricalIncludeAverageCpc {
+		hmo := &historicalMetricsOptions{IncludeAverageCpc: opts.HistoricalIncludeAverageCpc}
+		if opts.HistoricalDateRange != nil {
+			hmo.YearMonthRange = &yearMonthRange{
+				Start: yearMonth{Year: opts.HistoricalDateRange.Start.Year, Month: opts.HistoricalDateRange.Start.Month},
+				End:   yearMonth{Year: opts.HistoricalDateRange.End.Year, Month: opts.HistoricalDateRange.End.Month},
+			}
+		}
+		reqBody.HistoricalMetricsOptions = hmo
+	}
+
 	endpoint := fmt.Sprintf("%s/customers/%s:generateKeywordHistoricalMetrics", c.baseURL, c.customerID)
 
 	var raw generateHistoricalMetricsResponse
@@ -330,5 +351,16 @@ type YearMonthRange struct {
 type YearMonth struct {
 	Year  int32
 	Month string
+}
+
+// HistoricalMetricsOptions are optional parameters for GetHistoricalMetrics.
+type HistoricalMetricsOptions struct {
+	Language                    string
+	GeoTargetConstants          []string
+	KeywordPlanNetwork          string
+	IncludeAdultKeywords        bool
+	AggregateMetrics            []string
+	HistoricalDateRange         *YearMonthRange
+	HistoricalIncludeAverageCpc bool
 }
 
