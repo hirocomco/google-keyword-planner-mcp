@@ -178,19 +178,51 @@ func (c *Client) GetKeywordForecast(
 	keywords []string,
 	maxCPCMicros int64,
 	forecastDays int,
+	opts ForecastOptions,
 ) (*ForecastResponse, error) {
 	if forecastDays <= 0 {
 		forecastDays = 30
 	}
-	now := time.Now().UTC()
-	startDate := now.Format("2006-01-02")
-	endDate := now.AddDate(0, 0, forecastDays).Format("2006-01-02")
 
-	biddable := make([]adGroupForecastKeyword, 0, len(keywords))
-	for _, kw := range keywords {
-		biddable = append(biddable, adGroupForecastKeyword{
-			Keyword: forecastKeyword{Text: kw, MatchType: "BROAD"},
-		})
+	startDate := opts.StartDate
+	endDate := opts.EndDate
+	if startDate == "" && endDate == "" {
+		now := time.Now().UTC()
+		startDate = now.Format("2006-01-02")
+		endDate = now.AddDate(0, 0, forecastDays).Format("2006-01-02")
+	}
+
+	defaultMatchType := opts.MatchType
+	if defaultMatchType == "" {
+		defaultMatchType = "BROAD"
+	}
+
+	specs := opts.KeywordSpecs
+	if len(specs) == 0 {
+		specs = make([]ForecastKeywordSpec, 0, len(keywords))
+		for _, kw := range keywords {
+			specs = append(specs, ForecastKeywordSpec{Text: kw})
+		}
+	}
+
+	biddable := make([]adGroupForecastKeyword, 0, len(specs))
+	for _, s := range specs {
+		mt := s.MatchType
+		if mt == "" {
+			mt = defaultMatchType
+		}
+		entry := adGroupForecastKeyword{
+			Keyword: forecastKeyword{Text: s.Text, MatchType: mt},
+		}
+		if s.MaxCpcBidMicros > 0 {
+			entry.MaxCpcBidMicros = strconv.FormatInt(s.MaxCpcBidMicros, 10)
+		}
+		biddable = append(biddable, entry)
+	}
+
+	geoMods := make([]geoModifier, 0, len(opts.GeoTargetConstants))
+	for _, g := range opts.GeoTargetConstants {
+		geoMods = append(geoMods, geoModifier{GeoTargetConstant: g})
 	}
 
 	reqBody := generateForecastMetricsRequest{
@@ -200,9 +232,12 @@ func (c *Client) GetKeywordForecast(
 					MaxCPCBidMicros: strconv.FormatInt(maxCPCMicros, 10),
 				},
 			},
-			StartDate: startDate,
-			EndDate:   endDate,
-			AdGroups:  []adGroupForecast{{Biddable: biddable}},
+			StartDate:          startDate,
+			EndDate:            endDate,
+			AdGroups:           []adGroupForecast{{Biddable: biddable}},
+			GeoModifiers:       geoMods,
+			LanguageConstants:  opts.LanguageConstants,
+			KeywordPlanNetwork: opts.KeywordPlanNetwork,
 		},
 	}
 
@@ -362,5 +397,26 @@ type HistoricalMetricsOptions struct {
 	AggregateMetrics            []string
 	HistoricalDateRange         *YearMonthRange
 	HistoricalIncludeAverageCpc bool
+}
+
+// ForecastOptions are optional parameters for GetKeywordForecast.
+type ForecastOptions struct {
+	GeoTargetConstants []string
+	LanguageConstants  []string
+	KeywordPlanNetwork string
+	MatchType          string // EXACT, PHRASE, or BROAD (default BROAD)
+	StartDate          string // YYYY-MM-DD; if set, both StartDate and EndDate must be set
+	EndDate            string
+	// KeywordSpecs is the per-keyword shape — overrides the keywords arg when len > 0.
+	KeywordSpecs []ForecastKeywordSpec
+}
+
+// ForecastKeywordSpec is one keyword with optional per-keyword overrides.
+// MatchType defaults to ForecastOptions.MatchType (or BROAD).
+// MaxCpcBidMicros, when > 0, is sent as a per-keyword bid override.
+type ForecastKeywordSpec struct {
+	Text            string
+	MatchType       string
+	MaxCpcBidMicros int64
 }
 

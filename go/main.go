@@ -149,7 +149,7 @@ func getHistoricalMetrics(ctx context.Context, client *keywordplanner.Client, in
 }
 
 func getKeywordForecast(ctx context.Context, client *keywordplanner.Client, input getKeywordForecastInput) (*mcp.CallToolResult, any, error) {
-	result, err := client.GetKeywordForecast(ctx, input.Keywords, input.MaxCPCMicros, input.ForecastDays)
+	result, err := client.GetKeywordForecast(ctx, input.Keywords, input.MaxCPCMicros, input.ForecastDays, keywordplanner.ForecastOptions{})
 	if err != nil {
 		errResult := map[string]string{"error": fmt.Sprintf("getting keyword forecast: %v", err)}
 		b, _ := json.Marshal(errResult)

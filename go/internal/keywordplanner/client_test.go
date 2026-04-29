@@ -226,3 +226,90 @@ func TestGetHistoricalMetrics_OmittedOptions_NoNewFields(t *testing.T) {
 		}
 	}
 }
+
+func TestGetKeywordForecast_AllBaseOptionsReachWire(t *testing.T) {
+	t.Parallel()
+	srv, captured := captureRequestBody(t, map[string]any{"adGroupForecastMetrics": []any{}})
+	defer srv.Close()
+
+	client := keywordplanner.NewTestClient("dev", "123", "", srv.URL, srv.Client())
+
+	opts := keywordplanner.ForecastOptions{
+		GeoTargetConstants: []string{"geoTargetConstants/21137"},
+		LanguageConstants:  []string{"languageConstants/1000"},
+		KeywordPlanNetwork: "GOOGLE_SEARCH",
+		MatchType:          "EXACT",
+		StartDate:          "2026-05-01",
+		EndDate:            "2026-05-30",
+	}
+
+	_, _ = client.GetKeywordForecast(context.Background(),
+		[]string{"lawn care", "fertilizer"}, 2_000_000, 30, opts)
+
+	var got map[string]any
+	if err := json.Unmarshal(*captured, &got); err != nil {
+		t.Fatalf("captured body not JSON: %v\n%s", err, string(*captured))
+	}
+	spec, _ := got["campaignForecastSpec"].(map[string]any)
+	if spec == nil {
+		t.Fatalf("missing campaignForecastSpec: %s", string(*captured))
+	}
+	if spec["startDate"] != "2026-05-01" || spec["endDate"] != "2026-05-30" {
+		t.Errorf("dates = %v / %v", spec["startDate"], spec["endDate"])
+	}
+	if spec["keywordPlanNetwork"] != "GOOGLE_SEARCH" {
+		t.Errorf("keywordPlanNetwork = %v", spec["keywordPlanNetwork"])
+	}
+	langs, _ := spec["languageConstants"].([]any)
+	if len(langs) != 1 || langs[0] != "languageConstants/1000" {
+		t.Errorf("languageConstants = %v", spec["languageConstants"])
+	}
+	geos, _ := spec["geoModifiers"].([]any)
+	if len(geos) != 1 {
+		t.Fatalf("geoModifiers = %v", spec["geoModifiers"])
+	}
+	g0, _ := geos[0].(map[string]any)
+	if g0["geoTargetConstant"] != "geoTargetConstants/21137" {
+		t.Errorf("geoModifiers[0].geoTargetConstant = %v", g0["geoTargetConstant"])
+	}
+	ags, _ := spec["adGroups"].([]any)
+	if len(ags) != 1 {
+		t.Fatalf("adGroups = %v", ags)
+	}
+	bk, _ := ags[0].(map[string]any)["biddableKeywords"].([]any)
+	if len(bk) != 2 {
+		t.Fatalf("biddableKeywords len = %d", len(bk))
+	}
+	for i, b := range bk {
+		bm, _ := b.(map[string]any)
+		kw, _ := bm["keyword"].(map[string]any)
+		if kw["matchType"] != "EXACT" {
+			t.Errorf("keyword[%d].matchType = %v", i, kw["matchType"])
+		}
+	}
+}
+
+func TestGetKeywordForecast_DefaultMatchTypeBroad(t *testing.T) {
+	t.Parallel()
+	srv, captured := captureRequestBody(t, map[string]any{"adGroupForecastMetrics": []any{}})
+	defer srv.Close()
+
+	client := keywordplanner.NewTestClient("dev", "123", "", srv.URL, srv.Client())
+	_, _ = client.GetKeywordForecast(context.Background(),
+		[]string{"k"}, 1_000_000, 30, keywordplanner.ForecastOptions{})
+
+	var got map[string]any
+	if err := json.Unmarshal(*captured, &got); err != nil {
+		t.Fatalf("captured body not JSON: %v\n%s", err, string(*captured))
+	}
+	spec, _ := got["campaignForecastSpec"].(map[string]any)
+	if spec == nil {
+		t.Fatalf("missing campaignForecastSpec")
+	}
+	ags, _ := spec["adGroups"].([]any)
+	bk, _ := ags[0].(map[string]any)["biddableKeywords"].([]any)
+	kw, _ := bk[0].(map[string]any)["keyword"].(map[string]any)
+	if kw["matchType"] != "BROAD" {
+		t.Errorf("default matchType = %v, want BROAD", kw["matchType"])
+	}
+}
