@@ -133,7 +133,7 @@ func TestGenerateKeywordIdeas_OmittedOptions_NoNewFields(t *testing.T) {
 
 func TestGetHistoricalMetrics_AllOptionsReachWire(t *testing.T) {
 	t.Parallel()
-	srv, captured := captureRequestBody(t, map[string]any{"metrics": []any{}})
+	srv, captured := captureRequestBody(t, map[string]any{"results": []any{}})
 	defer srv.Close()
 
 	client := keywordplanner.NewTestClient("dev", "123", "", srv.URL, srv.Client())
@@ -206,7 +206,7 @@ func TestGetHistoricalMetrics_AllOptionsReachWire(t *testing.T) {
 
 func TestGetHistoricalMetrics_OmittedOptions_NoNewFields(t *testing.T) {
 	t.Parallel()
-	srv, captured := captureRequestBody(t, map[string]any{"metrics": []any{}})
+	srv, captured := captureRequestBody(t, map[string]any{"results": []any{}})
 	defer srv.Close()
 
 	client := keywordplanner.NewTestClient("dev", "123", "", srv.URL, srv.Client())
@@ -229,7 +229,7 @@ func TestGetHistoricalMetrics_OmittedOptions_NoNewFields(t *testing.T) {
 
 func TestGetKeywordForecast_AllBaseOptionsReachWire(t *testing.T) {
 	t.Parallel()
-	srv, captured := captureRequestBody(t, map[string]any{"adGroupForecastMetrics": []any{}})
+	srv, captured := captureRequestBody(t, map[string]any{"campaignForecastMetrics": map[string]any{}})
 	defer srv.Close()
 
 	client := keywordplanner.NewTestClient("dev", "123", "", srv.URL, srv.Client())
@@ -250,29 +250,33 @@ func TestGetKeywordForecast_AllBaseOptionsReachWire(t *testing.T) {
 	if err := json.Unmarshal(*captured, &got); err != nil {
 		t.Fatalf("captured body not JSON: %v\n%s", err, string(*captured))
 	}
-	spec, _ := got["campaignForecastSpec"].(map[string]any)
-	if spec == nil {
-		t.Fatalf("missing campaignForecastSpec: %s", string(*captured))
+	period, _ := got["forecastPeriod"].(map[string]any)
+	if period == nil {
+		t.Fatalf("missing forecastPeriod: %s", string(*captured))
 	}
-	if spec["startDate"] != "2026-05-01" || spec["endDate"] != "2026-05-30" {
-		t.Errorf("dates = %v / %v", spec["startDate"], spec["endDate"])
+	if period["startDate"] != "2026-05-01" || period["endDate"] != "2026-05-30" {
+		t.Errorf("dates = %v / %v", period["startDate"], period["endDate"])
 	}
-	if spec["keywordPlanNetwork"] != "GOOGLE_SEARCH" {
-		t.Errorf("keywordPlanNetwork = %v", spec["keywordPlanNetwork"])
+	campaign, _ := got["campaign"].(map[string]any)
+	if campaign == nil {
+		t.Fatalf("missing campaign: %s", string(*captured))
 	}
-	langs, _ := spec["languageConstants"].([]any)
+	if campaign["keywordPlanNetwork"] != "GOOGLE_SEARCH" {
+		t.Errorf("keywordPlanNetwork = %v", campaign["keywordPlanNetwork"])
+	}
+	langs, _ := campaign["languageConstants"].([]any)
 	if len(langs) != 1 || langs[0] != "languageConstants/1000" {
-		t.Errorf("languageConstants = %v", spec["languageConstants"])
+		t.Errorf("languageConstants = %v", campaign["languageConstants"])
 	}
-	geos, _ := spec["geoModifiers"].([]any)
+	geos, _ := campaign["geoModifiers"].([]any)
 	if len(geos) != 1 {
-		t.Fatalf("geoModifiers = %v", spec["geoModifiers"])
+		t.Fatalf("geoModifiers = %v", campaign["geoModifiers"])
 	}
 	g0, _ := geos[0].(map[string]any)
 	if g0["geoTargetConstant"] != "geoTargetConstants/21137" {
 		t.Errorf("geoModifiers[0].geoTargetConstant = %v", g0["geoTargetConstant"])
 	}
-	ags, _ := spec["adGroups"].([]any)
+	ags, _ := campaign["adGroups"].([]any)
 	if len(ags) != 1 {
 		t.Fatalf("adGroups = %v", ags)
 	}
@@ -291,7 +295,7 @@ func TestGetKeywordForecast_AllBaseOptionsReachWire(t *testing.T) {
 
 func TestGetKeywordForecast_DefaultMatchTypeBroad(t *testing.T) {
 	t.Parallel()
-	srv, captured := captureRequestBody(t, map[string]any{"adGroupForecastMetrics": []any{}})
+	srv, captured := captureRequestBody(t, map[string]any{"campaignForecastMetrics": map[string]any{}})
 	defer srv.Close()
 
 	client := keywordplanner.NewTestClient("dev", "123", "", srv.URL, srv.Client())
@@ -302,11 +306,11 @@ func TestGetKeywordForecast_DefaultMatchTypeBroad(t *testing.T) {
 	if err := json.Unmarshal(*captured, &got); err != nil {
 		t.Fatalf("captured body not JSON: %v\n%s", err, string(*captured))
 	}
-	spec, _ := got["campaignForecastSpec"].(map[string]any)
-	if spec == nil {
-		t.Fatalf("missing campaignForecastSpec")
+	campaign, _ := got["campaign"].(map[string]any)
+	if campaign == nil {
+		t.Fatalf("missing campaign")
 	}
-	ags, _ := spec["adGroups"].([]any)
+	ags, _ := campaign["adGroups"].([]any)
 	bk, _ := ags[0].(map[string]any)["biddableKeywords"].([]any)
 	kw, _ := bk[0].(map[string]any)["keyword"].(map[string]any)
 	if kw["matchType"] != "BROAD" {
@@ -316,7 +320,7 @@ func TestGetKeywordForecast_DefaultMatchTypeBroad(t *testing.T) {
 
 func TestGetKeywordForecast_KeywordSpecs_PerKeywordOverrides(t *testing.T) {
 	t.Parallel()
-	srv, captured := captureRequestBody(t, map[string]any{"adGroupForecastMetrics": []any{}})
+	srv, captured := captureRequestBody(t, map[string]any{"campaignForecastMetrics": map[string]any{}})
 	defer srv.Close()
 
 	client := keywordplanner.NewTestClient("dev", "123", "", srv.URL, srv.Client())
@@ -336,8 +340,8 @@ func TestGetKeywordForecast_KeywordSpecs_PerKeywordOverrides(t *testing.T) {
 	if err := json.Unmarshal(*captured, &got); err != nil {
 		t.Fatalf("captured body not JSON: %v", err)
 	}
-	spec, _ := got["campaignForecastSpec"].(map[string]any)
-	ags, _ := spec["adGroups"].([]any)
+	campaign, _ := got["campaign"].(map[string]any)
+	ags, _ := campaign["adGroups"].([]any)
 	bk, _ := ags[0].(map[string]any)["biddableKeywords"].([]any)
 	if len(bk) != 2 {
 		t.Fatalf("biddableKeywords len = %d", len(bk))

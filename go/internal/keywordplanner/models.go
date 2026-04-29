@@ -42,20 +42,20 @@ type HistoricalMetricsResponse struct {
 	Count    int              `json:"count"`
 }
 
-// KeywordForecastMetrics holds projected performance for a keyword.
-type KeywordForecastMetrics struct {
-	Text        string  `json:"text"`
-	Impressions float64 `json:"impressions"`
-	Clicks      float64 `json:"clicks"`
-	CostMicros  float64 `json:"costMicros"`
-	CTR         float64 `json:"ctr"`
+// CampaignForecastResult holds projected aggregate performance for the campaign.
+type CampaignForecastResult struct {
+	Impressions      float64 `json:"impressions"`
+	ClickThroughRate float64 `json:"clickThroughRate"`
+	AverageCpcMicros int64   `json:"averageCpcMicros"`
+	Clicks           float64 `json:"clicks"`
+	CostMicros       int64   `json:"costMicros"`
 }
 
 // ForecastResponse is the result of a keyword forecast request.
 type ForecastResponse struct {
-	Keywords  []KeywordForecastMetrics `json:"keywords"`
-	ForecastDays int                  `json:"forecastDays"`
-	MaxCPCMicros int64                `json:"maxCpcMicros"`
+	Campaign     CampaignForecastResult `json:"campaign"`
+	ForecastDays int                    `json:"forecastDays"`
+	MaxCPCMicros int64                  `json:"maxCpcMicros"`
 }
 
 // --- Google Ads API raw request/response types ---
@@ -117,7 +117,7 @@ type generateHistoricalMetricsRequest struct {
 }
 
 type generateHistoricalMetricsResponse struct {
-	Metrics []historicalMetricsResult `json:"metrics"`
+	Results []historicalMetricsResult `json:"results"`
 }
 
 type historicalMetricsResult struct {
@@ -128,33 +128,37 @@ type historicalMetricsResult struct {
 type historicalMetrics struct {
 	AvgMonthlySearches     string                 `json:"avgMonthlySearches"`
 	Competition            string                 `json:"competition"`
-	CompetitionIndex       int32                  `json:"competitionIndex"`
+	CompetitionIndex       string                 `json:"competitionIndex"`
 	LowTopOfPageBidMicros  string                 `json:"lowTopOfPageBidMicros"`
 	HighTopOfPageBidMicros string                 `json:"highTopOfPageBidMicros"`
 	MonthlySearchVolumes   []monthlySearchVolume  `json:"monthlySearchVolumes"`
 }
 
 type monthlySearchVolume struct {
-	Year            int32  `json:"year"`
+	Year            string `json:"year"`
 	Month           string `json:"month"`
 	MonthlySearches string `json:"monthlySearches"`
 }
 
 type generateForecastMetricsRequest struct {
-	CampaignForecastSpec campaignForecastSpec `json:"campaignForecastSpec"`
+	ForecastPeriod forecastPeriod `json:"forecastPeriod"`
+	Campaign       forecastCampaign `json:"campaign"`
 }
 
-type campaignForecastSpec struct {
-	BiddingStrategy    biddingStrategy   `json:"biddingStrategy"`
-	StartDate          string            `json:"startDate"`
-	EndDate            string            `json:"endDate"`
-	AdGroups           []adGroupForecast `json:"adGroups"`
-	GeoModifiers       []geoModifier     `json:"geoModifiers,omitempty"`
-	LanguageConstants  []string          `json:"languageConstants,omitempty"`
-	KeywordPlanNetwork string            `json:"keywordPlanNetwork,omitempty"`
+type forecastPeriod struct {
+	StartDate string `json:"startDate"`
+	EndDate   string `json:"endDate"`
 }
 
-type biddingStrategy struct {
+type forecastCampaign struct {
+	BiddingStrategy    campaignBiddingStrategy `json:"biddingStrategy"`
+	AdGroups           []adGroupForecast       `json:"adGroups"`
+	GeoModifiers       []geoModifier           `json:"geoModifiers,omitempty"`
+	LanguageConstants  []string                `json:"languageConstants,omitempty"`
+	KeywordPlanNetwork string                  `json:"keywordPlanNetwork,omitempty"`
+}
+
+type campaignBiddingStrategy struct {
 	ManualCpcBiddingStrategy manualCpcBiddingStrategy `json:"manualCpcBiddingStrategy"`
 }
 
@@ -177,23 +181,15 @@ type forecastKeyword struct {
 }
 
 type generateForecastMetricsResponse struct {
-	AdGroupForecastMetrics []adGroupForecastMetrics `json:"adGroupForecastMetrics"`
+	CampaignForecastMetrics campaignForecastMetrics `json:"campaignForecastMetrics"`
 }
 
-type adGroupForecastMetrics struct {
-	KeywordForecastMetrics []keywordForecastMetric `json:"keywordForecastMetrics"`
-}
-
-type keywordForecastMetric struct {
-	Keyword  forecastKeyword    `json:"keyword"`
-	Metrics  forecastMetricData `json:"metrics"`
-}
-
-type forecastMetricData struct {
-	Impressions float64 `json:"impressions"`
-	Clicks      float64 `json:"clicks"`
-	CostMicros  float64 `json:"costMicros"`
-	CTR         float64 `json:"ctr"`
+type campaignForecastMetrics struct {
+	Impressions      float64 `json:"impressions"`
+	ClickThroughRate float64 `json:"clickThroughRate"`
+	AverageCpcMicros string  `json:"averageCpcMicros"`
+	Clicks           float64 `json:"clicks"`
+	CostMicros       string  `json:"costMicros"`
 }
 
 // historicalMetricsOptions controls historical metrics data range and breakdown.

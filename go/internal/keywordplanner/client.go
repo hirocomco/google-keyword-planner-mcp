@@ -148,12 +148,12 @@ func (c *Client) GetHistoricalMetrics(
 		return nil, err
 	}
 
-	metrics := make([]KeywordMetrics, 0, len(raw.Metrics))
-	for _, r := range raw.Metrics {
+	metrics := make([]KeywordMetrics, 0, len(raw.Results))
+	for _, r := range raw.Results {
 		monthly := make([]MonthlyVolume, 0, len(r.KeywordMetrics.MonthlySearchVolumes))
 		for _, m := range r.KeywordMetrics.MonthlySearchVolumes {
 			monthly = append(monthly, MonthlyVolume{
-				Year:            m.Year,
+				Year:            int32(parseI64(m.Year)),
 				Month:           parseMonthEnum(m.Month),
 				MonthlySearches: parseI64(m.MonthlySearches),
 			})
@@ -162,7 +162,7 @@ func (c *Client) GetHistoricalMetrics(
 			Text:                   r.Text,
 			AvgMonthlySearches:     parseI64(r.KeywordMetrics.AvgMonthlySearches),
 			Competition:            r.KeywordMetrics.Competition,
-			CompetitionIndex:       r.KeywordMetrics.CompetitionIndex,
+			CompetitionIndex:       int32(parseI64(r.KeywordMetrics.CompetitionIndex)),
 			LowTopOfPageBidMicros:  parseI64(r.KeywordMetrics.LowTopOfPageBidMicros),
 			HighTopOfPageBidMicros: parseI64(r.KeywordMetrics.HighTopOfPageBidMicros),
 			MonthlySearchVolumes:   monthly,
@@ -226,14 +226,16 @@ func (c *Client) GetKeywordForecast(
 	}
 
 	reqBody := generateForecastMetricsRequest{
-		CampaignForecastSpec: campaignForecastSpec{
-			BiddingStrategy: biddingStrategy{
+		ForecastPeriod: forecastPeriod{
+			StartDate: startDate,
+			EndDate:   endDate,
+		},
+		Campaign: forecastCampaign{
+			BiddingStrategy: campaignBiddingStrategy{
 				ManualCpcBiddingStrategy: manualCpcBiddingStrategy{
 					MaxCPCBidMicros: strconv.FormatInt(maxCPCMicros, 10),
 				},
 			},
-			StartDate:          startDate,
-			EndDate:            endDate,
 			AdGroups:           []adGroupForecast{{Biddable: biddable}},
 			GeoModifiers:       geoMods,
 			LanguageConstants:  opts.LanguageConstants,
@@ -248,21 +250,14 @@ func (c *Client) GetKeywordForecast(
 		return nil, err
 	}
 
-	var forecastMetrics []KeywordForecastMetrics
-	for _, ag := range raw.AdGroupForecastMetrics {
-		for _, kf := range ag.KeywordForecastMetrics {
-			forecastMetrics = append(forecastMetrics, KeywordForecastMetrics{
-				Text:        kf.Keyword.Text,
-				Impressions: kf.Metrics.Impressions,
-				Clicks:      kf.Metrics.Clicks,
-				CostMicros:  kf.Metrics.CostMicros,
-				CTR:         kf.Metrics.CTR,
-			})
-		}
-	}
-
 	return &ForecastResponse{
-		Keywords:     forecastMetrics,
+		Campaign: CampaignForecastResult{
+			Impressions:      raw.CampaignForecastMetrics.Impressions,
+			ClickThroughRate: raw.CampaignForecastMetrics.ClickThroughRate,
+			AverageCpcMicros: parseI64(raw.CampaignForecastMetrics.AverageCpcMicros),
+			Clicks:           raw.CampaignForecastMetrics.Clicks,
+			CostMicros:       parseI64(raw.CampaignForecastMetrics.CostMicros),
+		},
 		ForecastDays: forecastDays,
 		MaxCPCMicros: maxCPCMicros,
 	}, nil
