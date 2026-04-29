@@ -222,7 +222,7 @@ func main() {
 	mcp.AddTool(srv,
 		&mcp.Tool{
 			Name:        "generate_keyword_ideas",
-			Description: "Generate keyword ideas from seed keywords and/or a URL using Google Ads Keyword Planner. Returns related keywords with average monthly search volume, competition level, and CPC estimates.",
+			Description: "Generate keyword ideas from seed keywords and/or a URL using Google Ads Keyword Planner. Returns related keywords with average monthly search volume, competition level, and CPC estimates. Optional geo_target_constants narrows by location (e.g. ['geoTargetConstants/2840'] for US, ['geoTargetConstants/21137'] for California). Optional language uses 'languageConstants/1000' for English. Set historical_metrics_start/end to scope volume history.",
 		},
 		func(ctx context.Context, _ *mcp.CallToolRequest, input generateKeywordIdeasInput) (*mcp.CallToolResult, any, error) {
 			return generateKeywordIdeas(ctx, client, input)
@@ -232,7 +232,7 @@ func main() {
 	mcp.AddTool(srv,
 		&mcp.Tool{
 			Name:        "get_historical_metrics",
-			Description: "Get historical search volume and competition metrics for a list of specific keywords using Google Ads Keyword Planner.",
+			Description: "Get historical search volume and competition metrics for a list of specific keywords. Optional geo_target_constants narrows by location. Set historical_metrics_start/end (e.g. {year:2024,month:'JANUARY'}) to scope the date range; defaults to Google's most recent ~12 months.",
 		},
 		func(ctx context.Context, _ *mcp.CallToolRequest, input getHistoricalMetricsInput) (*mcp.CallToolResult, any, error) {
 			return getHistoricalMetrics(ctx, client, input)
@@ -242,7 +242,7 @@ func main() {
 	mcp.AddTool(srv,
 		&mcp.Tool{
 			Name:        "get_keyword_forecast",
-			Description: "Get projected impressions, clicks, and cost for a set of keywords at a given max CPC bid using Google Ads Keyword Planner.",
+			Description: "Get projected impressions, clicks, and cost for a set of keywords at a given max CPC bid. Uses manual CPC bidding only. Pass keywords (string list, all share match_type) OR keyword_specs (per-keyword text/match_type/max_cpc_micros) — not both. Optional geo_target_constants and language_constants narrow targeting. Default match_type is BROAD; set EXACT for precise volume estimates.",
 		},
 		func(ctx context.Context, _ *mcp.CallToolRequest, input getKeywordForecastInput) (*mcp.CallToolResult, any, error) {
 			return getKeywordForecast(ctx, client, input)
