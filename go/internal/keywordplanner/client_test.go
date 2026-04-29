@@ -313,3 +313,51 @@ func TestGetKeywordForecast_DefaultMatchTypeBroad(t *testing.T) {
 		t.Errorf("default matchType = %v, want BROAD", kw["matchType"])
 	}
 }
+
+func TestGetKeywordForecast_KeywordSpecs_PerKeywordOverrides(t *testing.T) {
+	t.Parallel()
+	srv, captured := captureRequestBody(t, map[string]any{"adGroupForecastMetrics": []any{}})
+	defer srv.Close()
+
+	client := keywordplanner.NewTestClient("dev", "123", "", srv.URL, srv.Client())
+
+	opts := keywordplanner.ForecastOptions{
+		MatchType: "PHRASE", // default for specs that omit MatchType
+		KeywordSpecs: []keywordplanner.ForecastKeywordSpec{
+			{Text: "lawn care", MatchType: "EXACT", MaxCpcBidMicros: 5_000_000},
+			{Text: "fertilizer"}, // inherits PHRASE, no per-kw bid
+		},
+	}
+
+	_, _ = client.GetKeywordForecast(context.Background(),
+		nil /* ignored when KeywordSpecs set */, 1_000_000, 30, opts)
+
+	var got map[string]any
+	if err := json.Unmarshal(*captured, &got); err != nil {
+		t.Fatalf("captured body not JSON: %v", err)
+	}
+	spec, _ := got["campaignForecastSpec"].(map[string]any)
+	ags, _ := spec["adGroups"].([]any)
+	bk, _ := ags[0].(map[string]any)["biddableKeywords"].([]any)
+	if len(bk) != 2 {
+		t.Fatalf("biddableKeywords len = %d", len(bk))
+	}
+
+	bk0, _ := bk[0].(map[string]any)
+	kw0, _ := bk0["keyword"].(map[string]any)
+	if kw0["text"] != "lawn care" || kw0["matchType"] != "EXACT" {
+		t.Errorf("kw0 = %v", kw0)
+	}
+	if bk0["maxCpcBidMicros"] != "5000000" {
+		t.Errorf("kw0 bid = %v", bk0["maxCpcBidMicros"])
+	}
+
+	bk1, _ := bk[1].(map[string]any)
+	kw1, _ := bk1["keyword"].(map[string]any)
+	if kw1["text"] != "fertilizer" || kw1["matchType"] != "PHRASE" {
+		t.Errorf("kw1 = %v", kw1)
+	}
+	if _, has := bk1["maxCpcBidMicros"]; has {
+		t.Errorf("kw1 should not have per-keyword bid, got %v", bk1["maxCpcBidMicros"])
+	}
+}
